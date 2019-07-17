@@ -1,0 +1,11 @@
+# ETCD config file.
+# birch
+#endpoints: ["192.168.2.42:2379"]
+# comap-spectrometer
+#endpoints: ["192.168.2.73:2379"]
+# dsamaster
+endpoints: ["192.168.1.132:2379"]
+# Number of seconds for timeout
+timeout: "1s"
+# command to watch
+commands: ['/cmd/0', '/cmd/4']
