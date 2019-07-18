@@ -70,7 +70,7 @@ def parse_value(value):
     rtn = {}
     try:
         rtn = json.loads(value)
-    except JSONDecodeError:
+    except ValueError:
         dprint("parse_value(): JSON Decode Error. Check JSON. value= {}".
                format(value), 'ERR')
     return rtn
