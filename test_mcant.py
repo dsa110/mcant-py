@@ -44,19 +44,26 @@ class TestMcant(unittest.TestCase):
         result7 = mcant.parse_endpoint(["hgd7325642gdhsd:asghr8732rghe"])
         self.assertEqual(result7, ('hgd7325642gdhsd', 'asghr8732rghe'))
 
+        result8 = mcant.parse_endpoint(["1:2", "3:4"])
+        self.assertEqual(result8, ('1', '2'))
+
+
     def test_parse_value(self):
         # Test if mcant.parse_value returns a key, value dictionary from the JSON string.
 
-        result8 = mcant.parse_value('{"key":"value"}')
-        self.assertEqual(result8, {'key':'value'})
+        result9 = mcant.parse_value('{"key":"value"}')
+        self.assertEqual(result9, {'key':'value'})
 
-        result9 = mcant.parse_value('{"key":true}')
-        self.assertEqual(result9, {'key': True})
+        result10 = mcant.parse_value('{"key": true}')
+        self.assertEqual(result10, {'key': True})
+
+        result11 = mcant.parse_value('{"key": false}')
+        self.assertEqual(result11, {'key': False})
 
         print('expected: \nERR: parse_value(): JSON Decode Error. Check JSON. value= {"hello"}')
         print("result:")
-        result10 = mcant.parse_value('{"hello"}')
-        self.assertEqual(result10, {})
+        result12 = mcant.parse_value('{"hello"}')
+        self.assertEqual(result12, {})
 
 
 
