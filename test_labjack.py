@@ -4,7 +4,7 @@
 import time
 from threading import Thread
 import threading
-import Queue
+import queue
 #import hw_monitor as mon
 import os
 #from monitor_server import MpServer
@@ -12,17 +12,11 @@ from os.path import dirname
 from os.path import realpath
 import sys
 TOP_OF_TREE = dirname(dirname(realpath(__file__)))
-print(TOP_OF_TREE)
 sys.path.insert(0, TOP_OF_TREE + '\jl_dsacode')
-print(sys.path)
 import hwmc_logging as log
-print("1")
 import commands as cmds
-print("2")
 import dsa_labjack as dlj
-print("4")
 import hw_monitor as mon
-print("5")
 MODULE = os.path.basename(__file__)
 
 # Set up some parameters to control execution, memory allocation, and logging
@@ -52,22 +46,21 @@ monitor_thread.start()
 thread_count += 1
 
 
-
-
-
-
-def ant_array_length(x):
-    non_zero = False
-    if len(x) > 0:
-        non_zero = True
+def is_dict_empty(dict):
+    result = True
+    if dict == None:
+        print("The dictionary object does not exist")
+    elif not dict:
+        print("The dictionary is empty")
+    else:
+        print("The dictionary is not empty")
+        result = False
+    return result
 
 if __name__ == "__main__":
-    print("finished import")
-    #devices = dlj.LabjackList(log_msg_q, mp_q, simulate=SIM)
-    print("got devices")
-    #ants = devices.ants
+    devices = dlj.LabjackList(log_msg_q, mp_q, simulate=SIM)
 
-    #if ant_array_length(ants):
-     #   print("array length is greater than zero")
-    #else:
-     #   print("error: array length is zero")
+    ants = devices.ants
+
+    is_dict_empty(ants)
+    print("ants: ", ants)

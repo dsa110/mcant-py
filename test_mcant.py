@@ -1,5 +1,6 @@
 import mcant
 import unittest
+from unittest.mock import Mock
 
 class TestMcant(unittest.TestCase):
 
@@ -64,7 +65,17 @@ class TestMcant(unittest.TestCase):
         print("result:")
         result12 = mcant.parse_value('{"hello"}')
         self.assertEqual(result12, {})
+        print('\n')
 
+    def test_process_event(self):
+        json = Mock()
+        json.process_command('{"key":"value"}')
+        json.process_command('{"kristen":"lamb"}')
+        json.process_command('["1":"2"}')
+        x = json.process_command.call_count
+        self.assertEqual(x, 3)
+        y = json.process_command.call_args_list
+        print(y)
 
 
 
