@@ -17,6 +17,7 @@ import hwmc_logging as log
 import commands as cmds
 import dsa_labjack as dlj
 import hw_monitor as mon
+from labjack import ljm
 MODULE = os.path.basename(__file__)
 
 # Set up some parameters to control execution, memory allocation, and logging
@@ -46,7 +47,10 @@ monitor_thread.start()
 thread_count += 1
 
 
+
+
 def is_dict_empty(dict):
+
     result = True
     if dict == None:
         print("The dictionary object does not exist")
@@ -59,8 +63,22 @@ def is_dict_empty(dict):
 
 if __name__ == "__main__":
     devices = dlj.LabjackList(log_msg_q, mp_q, simulate=SIM)
-
     ants = devices.ants
 
     is_dict_empty(ants)
     print("ants: ", ants)
+
+
+    labjack = ants[1]
+    print("labjack is", labjack)
+    default_data = labjack.monitor_points
+    print("default data is", default_data)
+
+    labjack_data = labjack.get_data()
+    print("labjack data is", labjack_data)
+
+    ndcmd = ('nd', 'a', 'on')
+    labjack.execute_cmd(ndcmd)
+
+    labjack_data = labjack.get_data()
+    print("labjack data is", labjack_data)
