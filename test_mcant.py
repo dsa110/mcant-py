@@ -15,6 +15,8 @@ class TestMcant(unittest.TestCase):
     def test_dprint(self):
         # Test if mcant.dprint prints in correct format contingent on a True boolean parameter, the return is None.
 
+        result20 = mcant.dprint("cmd key= {}, cmd val= {}".format("key", "val"), 'INFO', True)
+
         print("expected: \nINFO: hello")
         print("result:")
         result2 = mcant.dprint("hello", "INFO", True)

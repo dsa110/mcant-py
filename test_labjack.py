@@ -1,13 +1,6 @@
-#import hwmc_logging as log
-#import commands as cmds
-#import dsa_labjack as dlj
-import time
 from threading import Thread
-import threading
 import queue
-#import hw_monitor as mon
 import os
-#from monitor_server import MpServer
 from os.path import dirname
 from os.path import realpath
 import sys
@@ -17,7 +10,8 @@ import hwmc_logging as log
 import commands as cmds
 import dsa_labjack as dlj
 import hw_monitor as mon
-from labjack import ljm
+import unittest
+
 MODULE = os.path.basename(__file__)
 
 # Set up some parameters to control execution, memory allocation, and logging
@@ -48,37 +42,59 @@ thread_count += 1
 
 
 
+#class TestLabjack(unittest.TestCase):
+
+    #def test_switch_nd(self):
+        #ndcmd = ('nd', 'a', 'on')
+        #labjack.execute_cmd(ndcmd)
+        #self.assertEqual(labjack_data['nd1'], 1)
+
+        #ndcmd = ('nd', 'b', 'on')
+        #labjack.execute_cmd(ndcmd)
+        #self.assertEqual(labjack_data['nd2'], 1)
+
+        #ndcmd = ('nd', 'ab', 'on')
+        #labjack.execute_cmd(ndcmd)
+        #self.assertEqual(labjack_data['nd1'], 1)
+        #self.assertEqual(labjack_data['nd2'], 1)
+
+
 
 def is_dict_empty(dict):
 
-    result = True
     if dict == None:
         print("The dictionary object does not exist")
     elif not dict:
         print("The dictionary is empty")
     else:
         print("The dictionary is not empty")
-        result = False
-    return result
+
 
 if __name__ == "__main__":
+    #unittest.main()
     devices = dlj.LabjackList(log_msg_q, mp_q, simulate=SIM)
     ants = devices.ants
+
+    labjack = ants[1]
+    print("labjack is", labjack)
+
+    labjack_data = labjack.get_data()
 
     is_dict_empty(ants)
     print("ants: ", ants)
 
 
-    labjack = ants[1]
-    print("labjack is", labjack)
-    default_data = labjack.monitor_points
-    print("default data is", default_data)
-
     labjack_data = labjack.get_data()
     print("labjack data is", labjack_data)
 
-    ndcmd = ('nd', 'a', 'on')
+    print(labjack_data['ant_el'])
+
+    ndcmd = ('nd', 'b', 'off')
     labjack.execute_cmd(ndcmd)
-
     labjack_data = labjack.get_data()
     print("labjack data is", labjack_data)
+
+    #movecmd = ('move', 'off')
+    #labjack.execute_cmd(movecmd)
+
+
