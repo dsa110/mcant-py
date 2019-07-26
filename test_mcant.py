@@ -63,21 +63,16 @@ class TestMcant(unittest.TestCase):
         result11 = mcant.parse_value('{"key": false}')
         self.assertEqual(result11, {'key': False})
 
+        result51 = mcant.parse_value('{"/cmd/ant/1" : "\'mv\', 34.2"}')
+        self.assertEqual(result51, "hello")
+
         print('expected: \nERR: parse_value(): JSON Decode Error. Check JSON. value= {"hello"}')
         print("result:")
         result12 = mcant.parse_value('{"hello"}')
         self.assertEqual(result12, {})
         print('\n')
 
-    def test_process_event(self):
-        json = Mock()
-        json.process_command('{"key":"value"}')
-        json.process_command('{"kristen":"lamb"}')
-        json.process_command('["1":"2"}')
-        x = json.process_command.call_count
-        self.assertEqual(x, 3)
-        y = json.process_command.call_args_list
-        print(y)
+    #def test_process_event(self):
 
 
 
