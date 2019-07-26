@@ -8,4 +8,4 @@ endpoints: ["192.168.1.132:2379"]
 # Number of seconds for timeout
 timeout: "1s"
 # command to watch
-commands: ['/cmd/0', '/cmd/4']
+commands: ['/cmd/ant/0', '/cmd/ant/4']

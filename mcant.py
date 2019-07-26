@@ -7,6 +7,7 @@ import json
 from time import sleep
 import yaml
 import etcd3
+import bridge as br
 
 DBG = True
 
@@ -76,23 +77,28 @@ def parse_value(value):
     return rtn
 
 
-def process_command(event):
+def process_command():
     """Etcd watch callback function. Called when values of watched
        keys are updated.
 
     :param event: Etcd event containing the key and value.
     :type event: TODO fill in.
     """
+    print("inside process-cmd")
+    my_br = br.ConvertEtcd(1)
+    def a(event):
 
-    dprint("process_command() event= {}".format(event), 'INFO', DBG)
-    key = event.key.decode('utf-8')
-    value = event.value.decode('utf-8')
-    dprint("key= {}, value= {}".format(key, value), 'INFO', DBG)
-    # parse the JSON command
-    cmd = parse_value(value)
-    for key, val in cmd.items():
-        dprint("cmd key= {}, cmd val= {}".format(key, val), 'INFO', DBG)
+        dprint("process_command() event= {}".format(event), 'INFO', DBG)
+        key = event.key.decode('utf-8')
+        value = event.value.decode('utf-8')
+        dprint("key= {}, value= {}".format(key, value), 'INFO', DBG)
+        # parse the JSON command
+        cmd = parse_value(value)
+        for key, val in cmd.items():
+            dprint("cmd key= {}, cmd val= {}".format(key, val), 'INFO', DBG)
 
+        my_br.process(key, cmd)
+    return a
 
 def backend_run(args):
     """Main entry point. Will never return.
@@ -107,7 +113,9 @@ def backend_run(args):
     etcd = etcd3.client(host=etcd_host, port=etcd_port)
     watch_ids = []
     for cmd in etcd_params['commands']:
-        watch_id = etcd.add_watch_callback(cmd, process_command)
+        #pc = process_command()
+        #print("have pc")
+        watch_id = etcd.add_watch_callback(cmd, process_command())
         watch_ids.append(watch_id)
 
     while True:
