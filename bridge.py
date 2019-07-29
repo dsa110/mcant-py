@@ -44,8 +44,11 @@ monitor_thread.start()
 thread_count += 1
 
 class ConvertEtcd:
+    # Convert UI etcd commands into a tuple to integrate with the dsa labjack hwmc
 
     def __init__(self, ant_num):
+        # Create dictionary of labjacks on the network, focus on specific- or all antenna
+
         devices = dlj.LabjackList(log_msg_q, mp_q, simulate=SIM)
         ants = devices.ants
         labjack = ants[ant_num]
@@ -53,14 +56,18 @@ class ConvertEtcd:
         self.labjack  = labjack
 
     def process(self, key, cmd):
+        # Main function, call private helper functions to convert move and polar noise commands
 
-        if cmd['Cmd'] == ETCD_MV:
+        command = cmd['Cmd']
+        if command == ETCD_MV:
             self.__move_process(cmd)
 
-        if cmd['Cmd'] == ETCD_ND1 or cmd['Cmd'] == ETCD_ND2:
+        if command == ETCD_ND1 or command == ETCD_ND2:
             self.__polarnoise_process(cmd)
 
     def __move_process(self, cmd):
+        # Private helper function, convert etcd move command into tuple then execute to the labjack
+
         command_name = LJ_MV
         value = cmd['Val']
 
@@ -69,26 +76,20 @@ class ConvertEtcd:
         self.labjack.execute_cmd(mv_tuple)
 
     def __polarnoise_process(self, cmd):
-        command_name = LJ_ND
+        # Private helper function, convert etcd polar noise command into tuple then execute to the labjack
 
+        command_name = LJ_ND
         command = cmd['Cmd']
         if command == ETCD_ND1:
             pol_id = POL1_ON
         elif command == ETCD_ND2:
             pol_id = POL2_ON
 
-        value = cmd['Val']
-        pol_state = value
+        pol_state = cmd['Val']
 
         nd_tuple = (command_name, pol_id, pol_state)
 
         self.labjack.execute_cmd(nd_tuple)
 
 
-if __name__ == '__main__':
-    key = '/cmd/ant/1'
-    cmd = {'Cmd':'Pol2Noise', 'Val': 'on'}
-    etcd_command = ConvertEtcd(1)
-    new_array =  ConvertEtcd.process(etcd_command, key, cmd)
-    print(new_array)
 
