@@ -103,12 +103,20 @@ class ConvertEtcd:
         newDict = {}
 
         newDict[self.ljnames['drive_state']] = dict['drive_state']
-        newDict[self.ljnames['brake']] = dict['brake']
-        newDict[self.ljnames['fan_err']] = dict['fan_err']
         newDict[self.ljnames['ant_el']] = dict['ant_el']
         newDict[self.ljnames['foc_temp']] = dict['foc_temp']
         newDict[self.ljnames['lj_temp']] = dict['lj_temp']
         newDict[self.ljnames['psu_voltage']] = dict['psu_voltage']
+
+        if dict['fan_err'] == 0:
+            newDict[self.ljnames['fan_err']] = False
+        else:
+            newDict[self.ljnames['fan_err']] = True
+
+        if dict['brake'] == 0:
+            newDict[self.ljnames['brake']] = False
+        else:
+            newDict[self.ljnames['brake']] = True
 
         pn = [0] * 2
         if dict['nd1'] == 0:
@@ -147,8 +155,14 @@ class ConvertEtcd:
         newDict[self.ljnames['laser_a_voltage']] = lv
 
         lim = [0] * 2
-        lim[0] = dict['minus_limit']
-        lim[1] = dict['plus_limit']
+        if dict['minus_limit'] == 0:
+            lim[0] = False
+        else:
+            lim[0] = True
+        if dict['plus_limit'] == 0:
+            lim[1] = False
+        else:
+            lim[1] = True
         newDict[self.ljnames['minus_limit']] = lim
 
         return newDict
