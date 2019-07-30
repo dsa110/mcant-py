@@ -8,4 +8,8 @@ endpoints: ["192.168.1.132:2379"]
 # Number of seconds for timeout
 timeout: "1s"
 # command to watch
-commands: ['/cmd/ant/0', '/cmd/ant/4']
+commands: ['/cmd/ant/0', '/cmd/ant/1']
+#antenna number
+ant_num: 1
+#Simulation indicator(bool), True when in sim mode, False when real labjack is connected
+SIM: False

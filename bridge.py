@@ -8,6 +8,9 @@ sys.path.insert(0, TOP_OF_TREE + '\jl_dsacode')
 import hwmc_logging as log
 import dsa_labjack as dlj
 import hw_monitor as mon
+import json
+import mcant
+import datetime
 
 
 ant_num = 1
@@ -49,23 +52,119 @@ class ConvertEtcd:
     def __init__(self, ant_num):
         # Create dictionary of labjacks on the network, focus on specific- or all antenna
 
+        self.ant_num = ant_num
         devices = dlj.LabjackList(log_msg_q, mp_q, simulate=SIM)
         ants = devices.ants
         labjack = ants[ant_num]
-        self.ant__num = ant_num
         self.labjack  = labjack
+        ljnames = {}
+        ljnames['drive_state'] = 'drivestate'
+        ljnames['brake'] = 'brake'
+        ljnames['plus_limit'] = 'limit'
+        ljnames['minus_limit'] = 'limit'
+        ljnames['fan_err'] = 'fanerror'
+        ljnames['ant_el'] = 'el'
+        ljnames['nd1'] = 'polnoise'
+        ljnames['nd2'] = 'polnoise'
+        ljnames['foc_temp'] = 'foctemp'
+        ljnames['lna_a_current'] = 'lnacurrent'
+        ljnames['lna_a_current'] = 'lnacurrent'
+        ljnames['rf_a_power'] = 'rfpower'
+        ljnames['rf_b_power'] = 'rfpower'
+        ljnames['laser_a_voltage'] = 'laservolt'
+        ljnames['laser_b_voltage'] = 'laservolt'
+        ljnames['feb_a_current'] = 'febcurrent'
+        ljnames['feb_b_current'] = 'febcurrent'
+        ljnames['feb_a_temp'] = 'febtemp'
+        ljnames['feb_b_temp'] = 'febtemp'
+        ljnames['lj_temp'] = 'computertemp'
+        ljnames['psu_voltage'] = 'psuvolt'
+        self.ljnames = ljnames
+
+    def _get_monitor_data(self):
+
+        time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        read = mcant.read_yaml('etcdConfig.yml')
+        sim = read['SIM']
+
+        md_dict = self.labjack.get_data()
+        print(md_dict)
+        newDict = self._remap(md_dict)
+        newDict['number'] = self.ant_num
+        newDict['time'] = time
+        newDict['sim'] = sim
+
+        md_json = json.dumps(newDict)
+
+        return md_json
+
+    def _remap(self, dict):
+
+        newDict = {}
+
+        newDict[self.ljnames['drive_state']] = dict['drive_state']
+        newDict[self.ljnames['brake']] = dict['brake']
+        newDict[self.ljnames['fan_err']] = dict['fan_err']
+        newDict[self.ljnames['ant_el']] = dict['ant_el']
+        newDict[self.ljnames['foc_temp']] = dict['foc_temp']
+        newDict[self.ljnames['lj_temp']] = dict['lj_temp']
+        newDict[self.ljnames['psu_voltage']] = dict['psu_voltage']
+
+        pn = [0] * 2
+        if dict['nd1'] == 0:
+            pn[0] = False
+        else:
+            pn[0] = True
+        if dict['nd2'] == 0:
+            pn[1] = False
+        else:
+            pn[1] = True
+        newDict[self.ljnames['nd1']] = pn
+
+        ft = [0] * 2
+        ft[0] = dict['feb_a_temp']
+        ft[1] = dict['feb_b_temp']
+        newDict[self.ljnames['feb_a_temp']] = ft
+
+        fc = [0] * 2
+        fc[0] = dict['feb_a_current']
+        fc[1] = dict['feb_b_current']
+        newDict[self.ljnames['feb_a_current']] = fc
+
+        lc = [0] * 2
+        lc[0] = dict['lna_a_current']
+        lc[1] = dict['lna_b_current']
+        newDict[self.ljnames['lna_a_current']] = lc
+
+        rfp = [0] * 2
+        rfp[0] = dict['rf_a_power']
+        rfp[1] = dict['rf_b_power']
+        newDict[self.ljnames['rf_a_power']] = rfp
+
+        lv = [0] * 2
+        lv[0] = dict['laser_a_voltage']
+        lv[1] = dict['laser_b_voltage']
+        newDict[self.ljnames['laser_a_voltage']] = lv
+
+        lim = [0] * 2
+        lim[0] = dict['minus_limit']
+        lim[1] = dict['plus_limit']
+        newDict[self.ljnames['minus_limit']] = lim
+
+        return newDict
+
 
     def process(self, key, cmd):
         # Main function, call private helper functions to convert move and polar noise commands
 
         command = cmd['Cmd']
         if command == ETCD_MV:
-            self.__move_process(cmd)
+            self._move_process(cmd)
 
         if command == ETCD_ND1 or command == ETCD_ND2:
-            self.__polarnoise_process(cmd)
+            self._polarnoise_process(cmd)
 
-    def __move_process(self, cmd):
+    def _move_process(self, cmd):
         # Private helper function, convert etcd move command into tuple then execute to the labjack
 
         command_name = LJ_MV
@@ -75,7 +174,7 @@ class ConvertEtcd:
 
         self.labjack.execute_cmd(mv_tuple)
 
-    def __polarnoise_process(self, cmd):
+    def _polarnoise_process(self, cmd):
         # Private helper function, convert etcd polar noise command into tuple then execute to the labjack
 
         command_name = LJ_ND
@@ -91,5 +190,9 @@ class ConvertEtcd:
 
         self.labjack.execute_cmd(nd_tuple)
 
+if __name__ == '__main__':
+    br = ConvertEtcd(1)
+    print(br._get_monitor_data())
+    #print(br._remap(br._get_monitor_data()))
 
 
