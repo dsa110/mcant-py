@@ -1,172 +1,186 @@
-from threading import Thread
 import queue
+import json
+import mcant
+import datetime
 from os.path import dirname
 from os.path import realpath
 import sys
 TOP_OF_TREE = dirname(dirname(realpath(__file__)))
 sys.path.insert(0, TOP_OF_TREE + '\jl_dsacode')
-import hwmc_logging as log
 import dsa_labjack as dlj
 import hw_monitor as mon
-import json
-import mcant
-import datetime
 
+# commands coming from the etcd
 ETCD_MV = 'mv'
 ETCD_ND1 = 'Pol1Noise'
 ETCD_ND2 = 'Pol2Noise'
+
+# commands readable by the labjack
 LJ_MV = 'move'
 LJ_ND = 'nd'
 POL1_ON = 'a'
 POL2_ON = 'b'
+
 ARRAY_SIZE = 2
 TRUE = 1
 FALSE = 0
 
-SIM = False     # Simulation mode of LabJacks
-
-
-# --------- Start main script ------------
-thread_count = 1    # This starts with main thread
-
-# Start logging
-logfile_prefix = "dsa-110-test-"
 log_msg_q = queue.Queue()
-level = log.ALL
-hw_log = log.HwmcLog(logfile_prefix, log_msg_q, level)
-log_thread = Thread(target=hw_log.logging_thread)
-log_thread.start()
-thread_count += 1
-
-# Start monitor point queue
 mp_q = mon.Monitor_q("dsa-110-test-", log_msg_q)
-monitor_thread = Thread(target=mp_q.run, name='mp_q-thread')
-monitor_thread.start()
-thread_count += 1
 
-class ConvertEtcd:
+class MonitorBridge:
     # Convert UI etcd commands into a tuple to integrate with the dsa labjack hwmc
 
     def __init__(self, ant_num):
-        # Create dictionary of labjacks on the network, focus on specific- or all antenna
+        """Create dictionary of labjacks on the network- use ant_num to extract specific antenna,
+        create a dictionary with labjack names as keys and etcd names as values
+
+        :param ant_num: number designating which antenna to get data from- read from yml file
+        :type ant_num: integer
+        """
 
         self.ant_num = ant_num
-        devices = dlj.LabjackList(log_msg_q, mp_q, simulate=SIM)
+        devices = dlj.LabjackList(log_msg_q, mp_q, mcant.read_yaml('etcdConfig.yml')['SIM'])
         ants = devices.ants
-        labjack = ants[ant_num]
-        self.labjack  = labjack
-        ljnames = {}
-        ljnames['drive_state'] = 'drivestate'
-        ljnames['brake'] = 'brake'
-        ljnames['plus_limit'] = 'limit'
-        ljnames['minus_limit'] = 'limit'
-        ljnames['fan_err'] = 'fanerror'
-        ljnames['ant_el'] = 'el'
-        ljnames['nd1'] = 'polnoise'
-        ljnames['nd2'] = 'polnoise'
-        ljnames['foc_temp'] = 'foctemp'
-        ljnames['lna_a_current'] = 'lnacurrent'
-        ljnames['lna_a_current'] = 'lnacurrent'
-        ljnames['rf_a_power'] = 'rfpower'
-        ljnames['rf_b_power'] = 'rfpower'
-        ljnames['laser_a_voltage'] = 'laservolt'
-        ljnames['laser_b_voltage'] = 'laservolt'
-        ljnames['feb_a_current'] = 'febcurrent'
-        ljnames['feb_b_current'] = 'febcurrent'
-        ljnames['feb_a_temp'] = 'febtemp'
-        ljnames['feb_b_temp'] = 'febtemp'
-        ljnames['lj_temp'] = 'computertemp'
-        ljnames['psu_voltage'] = 'psuvolt'
-        self.ljnames = ljnames
+        self.labjack  = ants[ant_num]
+        self.lj_names = {'drive_state': 'drivestate',
+                          'brake': 'brake',
+                          'plus_limit': 'limit',
+                          'minus_limit': 'limit',
+                          'fan_err': 'fanerror',
+                          'ant_el': 'el',
+                          'nd1': 'polnoise',
+                          'nd2': 'polnoise',
+                          'foc_temp': 'foctemp',
+                          'lna_a_current': 'lnacurrent',
+                          'lna_b_current': 'lnacurrent',
+                          'rf_a_power': 'rfpower',
+                          'rf_b_power': 'rfpower',
+                          'laser_a_voltage': 'laservolt',
+                          'laser_b_voltage': 'laservolt',
+                          'feb_a_current': 'febcurrent',
+                          'feb_b_current': 'febcurrent',
+                          'feb_a_temp': 'febtemp',
+                          'feb_b_temp': 'febtemp',
+                          'lj_temp': 'computertemp',
+                          'psu_voltage': 'psuvolt'}
 
     def get_monitor_data(self):
+        """Obtain labjack monitor data in a dictionary, call private method _remap. Add
+         time (UTC) and sim (True in sim mode, False in real mode) keys. Convert and
+        return changed dictionary into JSON string format
+
+        :return: JSON string of labjack monitor data with converted key names and values in
+        the form: {"key":"value"} or {"key":number|bool} or {"key":"[number, number]} or
+        {"key":[bool, bool]}
+        :rtype: String
+        """
 
         time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
         read = mcant.read_yaml('etcdConfig.yml')
         sim = read['SIM']
 
         md_dict = self.labjack.get_data()
-        newDict = self._remap(md_dict)
-        newDict['number'] = self.ant_num
-        newDict['time'] = time
-        newDict['sim'] = sim
+        new_dict = self._remap(md_dict)
+        new_dict['number'] = self.ant_num
+        new_dict['time'] = time
+        new_dict['sim'] = sim
 
-        md_json = json.dumps(newDict)
+        md_json = json.dumps(new_dict)
 
         return md_json
 
     def _remap(self, dict):
+        """Private method- Take in dictionary of labjack monitor data and create a new
+        dictionary with renamed keys- access new names with lj_names{}. Assign
+        corresponding labjack values to new keys. Create a value array of numbers or
+        bools for cases in which two distinct labjack keys match up with one etcd key.
+        Convert 0 and 1 values to be boolean values (0 is False, 1 is True).
 
-        newDict = {}
+        :param dict: Dictionary of the labjacks monitor data
+        :type: Dictionary
+        :return: Dictionary with renamed keys and array/boolean formatted values
+        :rtype: Dictionary
+        """
 
-        newDict[self.ljnames['drive_state']] = dict['drive_state']
-        newDict[self.ljnames['ant_el']] = dict['ant_el']
-        newDict[self.ljnames['foc_temp']] = dict['foc_temp']
-        newDict[self.ljnames['lj_temp']] = dict['lj_temp']
-        newDict[self.ljnames['psu_voltage']] = dict['psu_voltage']
+        new_dict = {}
+
+        new_dict[self.lj_names['drive_state']] = dict['drive_state']
+        new_dict[self.lj_names['ant_el']] = dict['ant_el']
+        new_dict[self.lj_names['foc_temp']] = dict['foc_temp']
+        new_dict[self.lj_names['lj_temp']] = dict['lj_temp']
+        new_dict[self.lj_names['psu_voltage']] = dict['psu_voltage']
 
         if dict['fan_err'] == FALSE:
-            newDict[self.ljnames['fan_err']] = False
+            new_dict[self.lj_names['fan_err']] = False
         elif dict['fan_err'] == TRUE:
-            newDict[self.ljnames['fan_err']] = True
+            new_dict[self.lj_names['fan_err']] = True
 
         if dict['brake'] == FALSE:
-            newDict[self.ljnames['brake']] = False
+            new_dict[self.lj_names['brake']] = False
         elif dict['brake'] == TRUE:
-            newDict[self.ljnames['brake']] = True
+            new_dict[self.lj_names['brake']] = True
 
-        pn = [0] * ARRAY_SIZE
+        pn_array = [0] * ARRAY_SIZE
         if dict['nd1'] == FALSE:
-            pn[0] = False
+            pn_array[0] = False
         elif dict['nd1'] == TRUE:
-            pn[0] = True
+            pn_array[0] = True
         if dict['nd2'] == FALSE:
-            pn[1] = False
+            pn_array[1] = False
         elif dict['nd2'] == TRUE:
-            pn[1] = True
-        newDict[self.ljnames['nd1']] = pn
+            pn_array[1] = True
+        new_dict[self.lj_names['nd1']] = pn_array
 
-        ft = [0] * ARRAY_SIZE
-        ft[0] = dict['feb_a_temp']
-        ft[1] = dict['feb_b_temp']
-        newDict[self.ljnames['feb_a_temp']] = ft
+        ft_array = [0] * ARRAY_SIZE
+        ft_array[0] = dict['feb_a_temp']
+        ft_array[1] = dict['feb_b_temp']
+        new_dict[self.lj_names['feb_a_temp']] = ft_array
 
-        fc = [0] * ARRAY_SIZE
-        fc[0] = dict['feb_a_current']
-        fc[1] = dict['feb_b_current']
-        newDict[self.ljnames['feb_a_current']] = fc
+        fc_array = [0] * ARRAY_SIZE
+        fc_array[0] = dict['feb_a_current']
+        fc_array[1] = dict['feb_b_current']
+        new_dict[self.lj_names['feb_a_current']] = fc_array
 
-        lc = [0] * ARRAY_SIZE
-        lc[0] = dict['lna_a_current']
-        lc[1] = dict['lna_b_current']
-        newDict[self.ljnames['lna_a_current']] = lc
+        lc_array = [0] * ARRAY_SIZE
+        lc_array[0] = dict['lna_a_current']
+        lc_array[1] = dict['lna_b_current']
+        new_dict[self.lj_names['lna_a_current']] = lc_array
 
-        rfp = [0] * ARRAY_SIZE
-        rfp[0] = dict['rf_a_power']
-        rfp[1] = dict['rf_b_power']
-        newDict[self.ljnames['rf_a_power']] = rfp
+        rfp_array = [0] * ARRAY_SIZE
+        rfp_array[0] = dict['rf_a_power']
+        rfp_array[1] = dict['rf_b_power']
+        new_dict[self.lj_names['rf_a_power']] = rfp_array
 
-        lv = [0] * ARRAY_SIZE
-        lv[0] = dict['laser_a_voltage']
-        lv[1] = dict['laser_b_voltage']
-        newDict[self.ljnames['laser_a_voltage']] = lv
+        lv_array = [0] * ARRAY_SIZE
+        lv_array[0] = dict['laser_a_voltage']
+        lv_array[1] = dict['laser_b_voltage']
+        new_dict[self.lj_names['laser_a_voltage']] = lv_array
 
-        lim = [0] * ARRAY_SIZE
+        lim_array = [0] * ARRAY_SIZE
         if dict['minus_limit'] == FALSE:
-            lim[0] = False
+            lim_array[0] = False
         elif dict['minus_limit'] == TRUE:
-            lim[0] = True
+            lim_array[0] = True
         if dict['plus_limit'] == FALSE:
-            lim[1] = False
+            lim_array[1] = False
         elif dict['plus_limit'] == TRUE:
-            lim[1] = True
-        newDict[self.ljnames['minus_limit']] = lim
+            lim_array[1] = True
+        new_dict[self.lj_names['minus_limit']] = lim_array
 
-        return newDict
+        return new_dict
 
 
-    def process(self, key, cmd):
-        # Main function, call private helper functions to convert move and polar noise commands
+    def process(self, cmd):
+        """Convert etcd commands into a format readable by the hardware script. If the
+        value contains the move key, the private method _move_process is invoked. If
+        the value contains a polarization noise key, the private method
+        _polar_noise_process is invoked
+
+        :param cmd: etcd value which is a dictionary with a cmd key as a command and a val
+        key as a number or string
+        :type: Dictionary
+        """
 
         command = cmd['Cmd']
         if command == ETCD_MV:
@@ -176,7 +190,13 @@ class ConvertEtcd:
             self._polar_noise_process(cmd)
 
     def _move_process(self, cmd):
-        # Private helper function, convert etcd move command into tuple then execute to the labjack
+        """Private method- Take in etcd value dictionary with the move command. Create
+        tuple with labjack readable command and cmd value. Execute command to the labjack
+
+        :param cmd: etcd value which is a dictionary with a cmd key as the move command
+        and a val key as a number decribing the desired elevation
+        :type: Dictionary
+        """
 
         command_name = LJ_MV
         value = cmd['Val']
@@ -186,7 +206,14 @@ class ConvertEtcd:
         self.labjack.execute_cmd(mv_tuple)
 
     def _polar_noise_process(self, cmd):
-        # Private helper function, convert etcd polar noise command into tuple then execute to the labjack
+        """Private method- Take in etcd value dictionary with one of the two polarization
+        noise commands. Create tuple with labjack readable command and cmd value. Execute
+        command to the labjack
+
+        :param cmd: etcd value which is a dictionary with a cmd key as the polarization
+        noise command and a val key as a string of either "on" or "off"
+        :type: Dictionary
+        """
 
         command_name = LJ_ND
         command = cmd['Cmd']

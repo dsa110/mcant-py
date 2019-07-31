@@ -10,6 +10,7 @@ import etcd3
 import bridge as br
 
 DBG = True
+ALL_ANTS = 0
 
 
 def read_yaml(fname):
@@ -95,7 +96,7 @@ def process_command(my_br):
         for key, val in cmd.items():
             dprint("cmd key= {}, cmd val= {}".format(key, val), 'INFO', DBG)
 
-        my_br.process(key, cmd)
+        my_br.process(cmd)
     return a
 
 def backend_run(args):
@@ -106,22 +107,23 @@ def backend_run(args):
 
     dprint(args.etcd_file, 'INFO', DBG)
     etcd_params = read_yaml(args.etcd_file)
-
-    my_br = br.ConvertEtcd(etcd_params['ant_num'])
+    ant_num = etcd_params['ant_num']
+    my_br = br.MonitorBridge(ant_num)
 
     etcd_host, etcd_port = parse_endpoint(etcd_params['endpoints'])
     dprint("etcd host={}, etcd port={}".format(etcd_host, etcd_port), 'INFO')
     etcd = etcd3.client(host=etcd_host, port=etcd_port)
     watch_ids = []
-    for cmd in etcd_params['commands']:
+
+    valid_ants = [ALL_ANTS, ant_num]
+    for num in valid_ants:
+        cmd = etcd_params['command'] + str(num)
         watch_id = etcd.add_watch_callback(cmd, process_command(my_br))
         watch_ids.append(watch_id)
 
     while True:
-        key = '/mon/ant/' + str(etcd_params['ant_num'])
-        print("key is:", key)
+        key = '/mon/ant/' + str(ant_num)
         md = my_br.get_monitor_data()
-        print(md)
         etcd.put(key, md)
         sleep(1)
 
