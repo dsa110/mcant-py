@@ -12,8 +12,6 @@ import json
 import mcant
 import datetime
 
-
-ant_num = 1
 ETCD_MV = 'mv'
 ETCD_ND1 = 'Pol1Noise'
 ETCD_ND2 = 'Pol2Noise'
@@ -21,12 +19,12 @@ LJ_MV = 'move'
 LJ_ND = 'nd'
 POL1_ON = 'a'
 POL2_ON = 'b'
+ARRAY_SIZE = 2
+TRUE = 1
+FALSE = 0
 
 SIM = False     # Simulation mode of LabJacks
 
-ANT_CMD_Q_DEPTH = 5
-
-log_level = log.INFO
 
 # --------- Start main script ------------
 thread_count = 1    # This starts with main thread
@@ -81,7 +79,7 @@ class ConvertEtcd:
         ljnames['psu_voltage'] = 'psuvolt'
         self.ljnames = ljnames
 
-    def _get_monitor_data(self):
+    def get_monitor_data(self):
 
         time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
         read = mcant.read_yaml('etcdConfig.yml')
@@ -107,60 +105,60 @@ class ConvertEtcd:
         newDict[self.ljnames['lj_temp']] = dict['lj_temp']
         newDict[self.ljnames['psu_voltage']] = dict['psu_voltage']
 
-        if dict['fan_err'] == 0:
+        if dict['fan_err'] == FALSE:
             newDict[self.ljnames['fan_err']] = False
-        else:
+        elif dict['fan_err'] == TRUE:
             newDict[self.ljnames['fan_err']] = True
 
-        if dict['brake'] == 0:
+        if dict['brake'] == FALSE:
             newDict[self.ljnames['brake']] = False
-        else:
+        elif dict['brake'] == TRUE:
             newDict[self.ljnames['brake']] = True
 
-        pn = [0] * 2
-        if dict['nd1'] == 0:
+        pn = [0] * ARRAY_SIZE
+        if dict['nd1'] == FALSE:
             pn[0] = False
-        else:
+        elif dict['nd1'] == TRUE:
             pn[0] = True
-        if dict['nd2'] == 0:
+        if dict['nd2'] == FALSE:
             pn[1] = False
-        else:
+        elif dict['nd2'] == TRUE:
             pn[1] = True
         newDict[self.ljnames['nd1']] = pn
 
-        ft = [0] * 2
+        ft = [0] * ARRAY_SIZE
         ft[0] = dict['feb_a_temp']
         ft[1] = dict['feb_b_temp']
         newDict[self.ljnames['feb_a_temp']] = ft
 
-        fc = [0] * 2
+        fc = [0] * ARRAY_SIZE
         fc[0] = dict['feb_a_current']
         fc[1] = dict['feb_b_current']
         newDict[self.ljnames['feb_a_current']] = fc
 
-        lc = [0] * 2
+        lc = [0] * ARRAY_SIZE
         lc[0] = dict['lna_a_current']
         lc[1] = dict['lna_b_current']
         newDict[self.ljnames['lna_a_current']] = lc
 
-        rfp = [0] * 2
+        rfp = [0] * ARRAY_SIZE
         rfp[0] = dict['rf_a_power']
         rfp[1] = dict['rf_b_power']
         newDict[self.ljnames['rf_a_power']] = rfp
 
-        lv = [0] * 2
+        lv = [0] * ARRAY_SIZE
         lv[0] = dict['laser_a_voltage']
         lv[1] = dict['laser_b_voltage']
         newDict[self.ljnames['laser_a_voltage']] = lv
 
-        lim = [0] * 2
-        if dict['minus_limit'] == 0:
-            lim[0] = True
-        else:
+        lim = [0] * ARRAY_SIZE
+        if dict['minus_limit'] == FALSE:
             lim[0] = False
-        if dict['plus_limit'] == 0:
+        elif dict['minus_limit'] == TRUE:
+            lim[0] = True
+        if dict['plus_limit'] == FALSE:
             lim[1] = False
-        else:
+        elif dict['plus_limit'] == TRUE:
             lim[1] = True
         newDict[self.ljnames['minus_limit']] = lim
 
@@ -175,7 +173,7 @@ class ConvertEtcd:
             self._move_process(cmd)
 
         if command == ETCD_ND1 or command == ETCD_ND2:
-            self._polarnoise_process(cmd)
+            self._polar_noise_process(cmd)
 
     def _move_process(self, cmd):
         # Private helper function, convert etcd move command into tuple then execute to the labjack
@@ -187,7 +185,7 @@ class ConvertEtcd:
 
         self.labjack.execute_cmd(mv_tuple)
 
-    def _polarnoise_process(self, cmd):
+    def _polar_noise_process(self, cmd):
         # Private helper function, convert etcd polar noise command into tuple then execute to the labjack
 
         command_name = LJ_ND

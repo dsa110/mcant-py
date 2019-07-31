@@ -114,15 +114,13 @@ def backend_run(args):
     etcd = etcd3.client(host=etcd_host, port=etcd_port)
     watch_ids = []
     for cmd in etcd_params['commands']:
-        #pc = process_command()
-        #print("have pc")
         watch_id = etcd.add_watch_callback(cmd, process_command(my_br))
         watch_ids.append(watch_id)
 
     while True:
         key = '/mon/ant/' + str(etcd_params['ant_num'])
         print("key is:", key)
-        md = my_br._get_monitor_data()
+        md = my_br.get_monitor_data()
         print(md)
         etcd.put(key, md)
         sleep(1)
