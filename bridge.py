@@ -88,7 +88,6 @@ class ConvertEtcd:
         sim = read['SIM']
 
         md_dict = self.labjack.get_data()
-        print(md_dict)
         newDict = self._remap(md_dict)
         newDict['number'] = self.ant_num
         newDict['time'] = time
@@ -156,9 +155,9 @@ class ConvertEtcd:
 
         lim = [0] * 2
         if dict['minus_limit'] == 0:
-            lim[0] = False
-        else:
             lim[0] = True
+        else:
+            lim[0] = False
         if dict['plus_limit'] == 0:
             lim[1] = False
         else:
@@ -204,9 +203,6 @@ class ConvertEtcd:
 
         self.labjack.execute_cmd(nd_tuple)
 
-if __name__ == '__main__':
-    br = ConvertEtcd(1)
-    print(br._get_monitor_data())
-    #print(br._remap(br._get_monitor_data()))
+
 
 
