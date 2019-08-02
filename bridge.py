@@ -4,9 +4,10 @@ import mcant
 import datetime
 from os.path import dirname
 from os.path import realpath
+from pathlib import Path
 import sys
 TOP_OF_TREE = dirname(dirname(realpath(__file__)))
-sys.path.insert(0, TOP_OF_TREE + '\jl_dsacode')
+sys.path.append(str(Path(TOP_OF_TREE + '/jl_dsacode')))
 import dsa_labjack as dlj
 import hw_monitor as mon
 
@@ -28,8 +29,10 @@ FALSE = 0
 log_msg_q = queue.Queue()
 mp_q = mon.Monitor_q("dsa-110-test-", log_msg_q)
 
-class MonitorBridge:
-    # Convert UI etcd commands into a tuple to integrate with the dsa labjack hwmc
+class EtcdBridge:
+    """ Convert UI etcd commands into a tuple to integrate with the dsa labjack hwmc, convert hw
+    monitor data to integrate with the etcd
+    """
 
     def __init__(self, ant_num):
         """Create dictionary of labjacks on the network- use ant_num to extract specific antenna,
@@ -74,6 +77,7 @@ class MonitorBridge:
         the form: {"key":"value"} or {"key":number|bool} or {"key":"[number, number]} or
         {"key":[bool, bool]}
         :rtype: String
+        :raise: ValueError
         """
 
         time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
@@ -86,7 +90,10 @@ class MonitorBridge:
         new_dict['time'] = time
         new_dict['sim'] = sim
 
-        md_json = json.dumps(new_dict)
+        try:
+            md_json = json.dumps(new_dict)
+        except ValueError:
+            print("Error: JSON encode error")
 
         return md_json
 

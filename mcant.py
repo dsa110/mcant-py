@@ -108,7 +108,7 @@ def backend_run(args):
     dprint(args.etcd_file, 'INFO', DBG)
     etcd_params = read_yaml(args.etcd_file)
     ant_num = etcd_params['ant_num']
-    my_br = br.MonitorBridge(ant_num)
+    my_br = br.EtcdBridge(ant_num)
 
     etcd_host, etcd_port = parse_endpoint(etcd_params['endpoints'])
     dprint("etcd host={}, etcd port={}".format(etcd_host, etcd_port), 'INFO')

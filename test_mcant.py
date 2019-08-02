@@ -10,7 +10,7 @@ class TestMcant(unittest.TestCase):
         # Test if mcant.read_yaml returns the contents of the yaml file.
 
         result1 = mcant.read_yaml('etcdConfig.yml')
-        self.assertEqual(result1, {'endpoints': ['192.168.1.132:2379'], 'timeout': '1s', 'commands': ['/cmd/0', '/cmd/4']})
+        self.assertEqual(result1, {'endpoints': ['192.168.1.132:2379'], 'timeout': '1s', 'command': '/cmd/ant/', 'ant_num' : 1, 'SIM' : False})
 
     def test_dprint(self):
         # Test if mcant.dprint prints in correct format contingent on a True boolean parameter, the return is None.
@@ -63,17 +63,17 @@ class TestMcant(unittest.TestCase):
         result11 = mcant.parse_value('{"key": false}')
         self.assertEqual(result11, {'key': False})
 
-        result51 = mcant.parse_value('{"/cmd/ant/1" : "\'mv\', 34.2"}')
-        self.assertEqual(result51, "hello")
+        result12 = mcant.parse_value('{"/cmd/ant/1" : "\'mv\', 34.2"}')
+        self.assertEqual(result12, {'/cmd/ant/1':"'mv', 34.2"})
+
+        result13 = mcant.parse_value('{"/cmd/ant/0" : "\'Pol1Noise\', off"}')
+        self.assertEqual(result13, {'/cmd/ant/0': "'Pol1Noise', off"})
 
         print('expected: \nERR: parse_value(): JSON Decode Error. Check JSON. value= {"hello"}')
         print("result:")
-        result12 = mcant.parse_value('{"hello"}')
-        self.assertEqual(result12, {})
+        result14 = mcant.parse_value('{"hello"}')
+        self.assertEqual(result14, {})
         print('\n')
-
-    #def test_process_event(self):
-
 
 
 if __name__ == '__main__':
