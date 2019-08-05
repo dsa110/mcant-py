@@ -29,8 +29,9 @@ FALSE = 0
 log_msg_q = queue.Queue()
 mp_q = mon.Monitor_q("dsa-110-test-", log_msg_q)
 
+
 class EtcdBridge:
-    """ Convert UI etcd commands into a tuple to integrate with the dsa labjack hwmc, convert hw
+    """ Convert UI etcd commands into tuples to integrate with the dsa labjack hwmc, convert hw
     monitor data to integrate with the etcd
     """
 
@@ -40,12 +41,22 @@ class EtcdBridge:
 
         :param ant_num: number designating which antenna to get data from- read from yml file
         :type ant_num: integer
+        :raise: KeyError, SystemExit
         """
 
         self.ant_num = ant_num
         devices = dlj.LabjackList(log_msg_q, mp_q, mcant.read_yaml('etcdConfig.yml')['SIM'])
         ants = devices.ants
-        self.labjack  = ants[ant_num]
+        print("ants is:", ants)
+        abes = devices.abes
+        print("abes is:", abes)
+
+        try:
+            self.labjack  = ants[ant_num]
+        except KeyError:
+            mcant.dprint("__init__(): Error Finding a Handle to the Specified Labjack. Check Connection."
+                         " ant_num = {}".format(ant_num), 'ERR')
+            raise SystemExit
         self.lj_names = {'drive_state': 'drivestate',
                           'brake': 'brake',
                           'plus_limit': 'limit',
@@ -93,16 +104,17 @@ class EtcdBridge:
         try:
             md_json = json.dumps(new_dict)
         except ValueError:
-            print("Error: JSON encode error")
+            mcant.dprint("get_monitor_data(): JSON encode error. Check JSON."
+                         "new_dict = {}".format(new_dict), 'ERR')
 
         return md_json
 
     def _remap(self, dict):
         """Private method- Take in dictionary of labjack monitor data and create a new
-        dictionary with renamed keys- access new names with lj_names{}. Assign
-        corresponding labjack values to new keys. Create a value array of numbers or
-        bools for cases in which two distinct labjack keys match up with one etcd key.
-        Convert 0 and 1 values to be boolean values (0 is False, 1 is True).
+        dictionary with renamed keys to be input into the UI- access new names with
+        lj_names{}. Assign corresponding labjack values to new keys. Create a value array
+        of numbers or bools for cases in which two distinct labjack keys match up with
+        one etcd key. Convert 0 and 1 values to be boolean values (0 is False, 1 is True).
 
         :param dict: Dictionary of the labjacks monitor data
         :type: Dictionary
@@ -177,7 +189,6 @@ class EtcdBridge:
 
         return new_dict
 
-
     def process(self, cmd):
         """Convert etcd commands into a format readable by the hardware script. If the
         value contains the move key, the private method _move_process is invoked. If
@@ -234,6 +245,7 @@ class EtcdBridge:
         nd_tuple = (command_name, pol_id, pol_state)
 
         self.labjack.execute_cmd(nd_tuple)
+
 
 
 

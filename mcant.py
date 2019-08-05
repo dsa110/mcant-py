@@ -67,6 +67,7 @@ def parse_value(value):
     :type value: String
     :return: Key,value dictionary
     :rtype: Dictionary
+    :raise: ValueError
     """
 
     rtn = {}
@@ -108,6 +109,7 @@ def backend_run(args):
     dprint(args.etcd_file, 'INFO', DBG)
     etcd_params = read_yaml(args.etcd_file)
     ant_num = etcd_params['ant_num']
+
     my_br = br.EtcdBridge(ant_num)
 
     etcd_host, etcd_port = parse_endpoint(etcd_params['endpoints'])
@@ -124,6 +126,7 @@ def backend_run(args):
     while True:
         key = '/mon/ant/' + str(ant_num)
         md = my_br.get_monitor_data()
+        print(md)
         etcd.put(key, md)
         sleep(1)
 

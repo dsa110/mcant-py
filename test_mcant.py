@@ -1,6 +1,5 @@
 import mcant
 import unittest
-from unittest.mock import Mock
 
 class TestMcant(unittest.TestCase):
 
